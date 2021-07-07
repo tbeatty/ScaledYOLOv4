@@ -32,7 +32,8 @@ def test(data,
          dataloader=None,
          save_dir='',
          merge=False,
-         save_txt=False):
+         save_txt=False,
+         save_conf=False):
     # Initialize/load model and set device
     training = model is not None
     if training:  # called by train.py
@@ -128,8 +129,9 @@ def test(data,
                 pred[:, :4] = scale_coords(img[si].shape[1:], pred[:, :4], shapes[si][0], shapes[si][1])  # to original
                 for *xyxy, conf, cls in pred:
                     xywh = (xyxy2xywh(torch.tensor(xyxy).view(1, 4)) / gn).view(-1).tolist()  # normalized xywh
+                    line = (cls, *xywh, conf) if save_conf else (cls, *xywh)  # label format
                     with open(txt_path + '.txt', 'a') as f:
-                        f.write(('%g ' * 5 + '\n') % (cls, *xywh))  # label format
+                        f.write(('%g ' * len(line)).rstrip() % line + '\n')
 
             # Clip boxes to image bounds
             clip_coords(pred, (height, width))
@@ -260,6 +262,7 @@ if __name__ == '__main__':
     parser.add_argument('--merge', action='store_true', help='use Merge NMS')
     parser.add_argument('--verbose', action='store_true', help='report mAP by class')
     parser.add_argument('--save-txt', action='store_true', help='save results to *.txt')
+    parser.add_argument('--save-conf', action='store_true', help='save confidences in --save-txt labels')
     opt = parser.parse_args()
     opt.save_json |= opt.data.endswith('coco.yaml')
     opt.data = check_file(opt.data)  # check file
@@ -275,7 +278,8 @@ if __name__ == '__main__':
              opt.save_json,
              opt.single_cls,
              opt.augment,
-             opt.verbose)
+             opt.verbose,
+             save_conf=opt.save_conf)
 
     elif opt.task == 'study':  # run over a range of settings and save/plot
         for weights in ['']:
